@@ -6,52 +6,43 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    /**
-     * Run the migrations.
-     */
     public function up(): void
     {
-        Schema::create('jobs', function (Blueprint $table) {
+        Schema::create('workflows', function (Blueprint $table) {
             $table->id();
-            $table->string('queue')->index();
-            $table->longText('payload');
-            $table->unsignedTinyInteger('attempts');
-            $table->unsignedInteger('reserved_at')->nullable();
-            $table->unsignedInteger('available_at');
-            $table->unsignedInteger('created_at');
-        });
-
-        Schema::create('job_batches', function (Blueprint $table) {
-            $table->string('id')->primary();
             $table->string('name');
-            $table->integer('total_jobs');
-            $table->integer('pending_jobs');
-            $table->integer('failed_jobs');
-            $table->longText('failed_job_ids');
-            $table->mediumText('options')->nullable();
-            $table->integer('cancelled_at')->nullable();
-            $table->integer('created_at');
-            $table->integer('finished_at')->nullable();
+            $table->enum('status', ['pending', 'running', 'completed', 'failed', 'cancelled'])->default('pending');
+            $table->timestamp('started_at')->nullable();
+            $table->timestamp('completed_at')->nullable();
+            $table->timestamps();
         });
 
-        Schema::create('failed_jobs', function (Blueprint $table) {
+        Schema::create('workflow_tasks', function (Blueprint $table) {
             $table->id();
-            $table->string('uuid')->unique();
-            $table->text('connection');
-            $table->text('queue');
-            $table->longText('payload');
-            $table->longText('exception');
-            $table->timestamp('failed_at')->useCurrent();
+            $table->foreignId('workflow_id')->constrained('workflows')->onDelete('cascade');
+            $table->string('task_class'); // Fully qualified class name of the Task Job
+            $table->json('payload')->nullable(); // Data needed for the task
+            $table->enum('status', ['pending', 'queued', 'running', 'completed', 'failed', 'cancelled'])->default('pending');
+            $table->timestamp('started_at')->nullable();
+            $table->timestamp('completed_at')->nullable();
+            $table->text('error_message')->nullable();
+            $table->timestamps();
+        });
+
+        Schema::create('workflow_task_dependencies', function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('workflow_task_id')->constrained('workflow_tasks')->onDelete('cascade');
+            $table->foreignId('depends_on_task_id')->constrained('workflow_tasks')->onDelete('cascade'); // The task that must complete before workflow_task_id starts
+            $table->timestamps();
+
+            $table->unique(['workflow_task_id', 'depends_on_task_id'], 'workflow_task_dependency_unique');
         });
     }
 
-    /**
-     * Reverse the migrations.
-     */
     public function down(): void
     {
-        Schema::dropIfExists('jobs');
-        Schema::dropIfExists('job_batches');
-        Schema::dropIfExists('failed_jobs');
+        Schema::dropIfExists('workflow_task_dependencies');
+        Schema::dropIfExists('workflow_tasks');
+        Schema::dropIfExists('workflows');
     }
 };
