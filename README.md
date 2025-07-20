@@ -1,107 +1,78 @@
-# Laravel Workflow System
+### API Routes
 
-This project implements a flexible workflow management system using Laravel, following a Service-Repository pattern, designed for handling a series of dependent tasks.
+Your application exposes the following API routes, accessible via the Nginx proxy on port `7071` of your host machine.
 
-## Features
+**Base URL:** `http://localhost:7071`
 
-* **Workflow Orchestration:** Define and execute complex workflows with dependent tasks.
-* **Asynchronous Task Processing:** Utilizes Laravel Queues for background task execution (image processing, notifications, etc.).
-* **Service-Repository Pattern:** Clean separation of concerns for business logic and data persistence.
-* **Event-Driven Communication:** Tasks communicate status changes via Laravel Events and Listeners.
-* **Dockerized Environment:** Easily run the entire application stack using Docker Compose.
+---
 
-## Technologies Used
+#### 1. Start a Workflow
 
-* **Laravel:** PHP Framework
-* **MySQL:** Database
-* **Redis:** Queue Driver & Caching
-* **Nginx:** Web Server
-* **Docker & Docker Compose:** Containerization
+* **Endpoint:** `/start-workflow`
 
-## Getting Started
+* **Method:** `GET`
 
-Follow these steps to get the project up and running on your local machine.
+* **Description:** This route initiates an example workflow within your application. Upon successful execution, it will typically return a unique ID for the started workflow.
 
-### Prerequisites
+* **Example Request (using `curl`):**
 
-* **Docker Desktop:** Make sure Docker Desktop (or Docker Engine for Linux) is installed and running.
-    * [Download Docker Desktop](https://www.docker.com/products/docker-desktop)
-* **Git:** For cloning the repository.
-
-### Installation
-
-1.  **Clone the repository:**
     ```bash
-    git clone <your-repository-url>
-    cd workflow-app # Or whatever your project folder is named
+    curl http://localhost:7071/start-workflow
     ```
 
-2.  **Create `.env` file:**
-    Copy the example environment file and generate an application key:
-    ```bash
-    cp .env.example .env
-    ```
-    Open the newly created `.env` file and make the following adjustments:
+* **Expected Response (Example):**
 
-    * Set your database credentials (e.g., `DB_USERNAME=root`, `DB_PASSWORD=password`).
-    * Ensure **`DB_HOST=mysql`** (this matches the service name in `docker-compose.yml`).
-    * Ensure **`REDIS_HOST=redis`** (this matches the service name in `docker-compose.yml`).
-    * Set **`QUEUE_CONNECTION=redis`** or `QUEUE_CONNECTION=database` (Redis is recommended for production).
-
-    Then, generate the application key:
-    ```bash
-    php artisan key:generate
+    ```json
+    {
+        "message": "Workflow started successfully",
+        "workflow_id": "some-unique-workflow-id"
+    }
     ```
 
-3.  **Build and Run Docker Containers:**
-    From the project root, run:
+    (The actual response may vary based on your `WorkflowController` implementation.)
+
+---
+
+#### 2. Get Workflow Status
+
+* **Endpoint:** `/workflow-status/{id}`
+
+* **Method:** `GET`
+
+* **Description:** This route allows you to retrieve the current status of a specific workflow using its unique ID.
+
+* **Parameters:**
+
+    * `id` (Path Parameter): The unique ID of the workflow you want to check. This ID is obtained from the `/start-workflow` endpoint.
+
+* **Example Request (using `curl`):**
+
     ```bash
-    docker-compose up -d --build
-    ```
-    This command will:
-    * Build the custom PHP-FPM image (if not already built).
-    * Create and start Nginx, PHP-FPM, MySQL, and Redis containers in detached mode (`-d`).
-
-4.  **Install Composer Dependencies (inside the PHP container):**
-    ```bash
-    docker-compose exec app composer install
-    ```
-
-5.  **Run Database Migrations:**
-    ```bash
-    docker-compose exec app php artisan migrate
-    ```
-
-6.  **Start the Queue Worker (important for task processing):**
-    You need a separate terminal or Docker Compose service for this. For local development, running it in your terminal is fine:
-    ```bash
-    docker-compose exec app php artisan queue:work --tries=3 --timeout=60
-    ```
-    * **Note:** For production, consider using a process manager like Supervisor or Laravel Horizon to ensure your queue worker is always running.
-
-## Usage
-
-Once all containers are up and running, and the queue worker is active, you can interact with the API.
-
-The application will be accessible at `http://localhost`.
-
-### Example API Endpoints:
-
-* **Start an Example Workflow (POST):**
-    `http://localhost/api/workflows/start-example`
-    ```bash
-    curl -X POST http://localhost/api/workflows/start-example
-    ```
-    This will return a `workflow_id`.
-
-* **Get Workflow Status (GET):**
-    `http://localhost/api/workflows/{workflow_id}/status`
-    (Replace `{workflow_id}` with the ID you received from the start endpoint)
-    ```bash
-    curl http://localhost/api/workflows/1/status
+    curl http://localhost:7071/workflow-status/some-unique-workflow-id
     ```
 
-Check your Laravel logs (`storage/logs/laravel.log`) inside the `app` container to see the workflow and task execution progress.
-To view logs:
-```bash
-docker-compose exec app tail -f storage/logs/laravel.log
+    (Replace `some-unique-workflow-id` with an actual ID returned from `/start-workflow`.)
+
+* **Expected Response (Example):**
+
+    ```json
+    {
+        "workflow_id": "some-unique-workflow-id",
+        "status": "completed",
+        "details": "..."
+    }
+    ```
+
+    (The actual response may vary based on your `WorkflowController` implementation.)
+
+---
+
+**To use these routes:**
+
+1.  Ensure your Docker services are up and running:
+
+    ```bash
+    docker compose up -d
+    ```
+
+2.  Open your web browser or use a tool like `curl` or Postman to make requests to the specified endpoints on `http://localhost:7071`.
