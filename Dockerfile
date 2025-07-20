@@ -38,8 +38,9 @@ COPY --from=composer/composer:latest-bin /composer /usr/bin/composer
 
 WORKDIR /var/www/html
 
-# IMPORTANT: Copy your application code into the image BEFORE setting permissions
 COPY . /var/www/html
+
+RUN composer install --no-dev --optimize-autoloader
 
 RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache \
     && chmod -R 775 /var/www/html/storage /var/www/html/bootstrap/cache
